@@ -97,13 +97,11 @@ services:
     volumes:
       # 持久化数据
       - ./data:/app/data
-      # 配置文件 (可选，如果想持久化配置)
-      - ./config.yaml:/app/config.yaml
     restart: unless-stopped
     networks:
       - werss-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v1/wx/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
