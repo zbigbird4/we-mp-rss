@@ -159,18 +159,19 @@ class ConfigManager:
 
     def _convert_value_type(self, value: str) -> Any:
         """尝试将字符串值转换为适当的数据类型"""
-        if value.lower() == 'true':
-            return True
-        if value.lower() == 'false':
-            return False
-        if value.lower() == 'null' or value == '':
-            return None
+        if isinstance(value, str):
+            if value.lower() == 'true':
+                return True
+            if value.lower() == 'false':
+                return False
+            if value.lower() == 'null' or value == '':
+                return None
         try:
             return int(value)
-        except ValueError:
+        except (ValueError, TypeError):
             try:
                 return float(value)
-            except ValueError:
+            except (ValueError, TypeError):
                 return value
 
     def generate_config_from_db(self, output_path: str = None) -> bool:
@@ -199,6 +200,55 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"从数据库生成配置文件失败: {str(e)}")
             return False
+
+    def update_config_in_yaml(self, config_key: str, config_value: str) -> bool:
+        """
+        更新YAML配置文件中的指定配置项
+        :param config_key: 配置项键名（支持点号分隔的嵌套键，如 'server.name'）
+        :param config_value: 新的配置值
+        :return: 是否成功
+        """
+        from core.config import cfg
+        
+        try:
+            self.logger.info(f"开始更新配置项: {config_key} = {config_value}")
+            
+            # 获取当前配置
+            current_config = cfg.config.copy()
+            
+            # 解析配置键（支持嵌套，如 'server.name'）
+            keys = config_key.split('.')
+            
+            # 更新配置值
+            if len(keys) == 1:
+                # 顶级配置
+                current_config[keys[0]] = self._convert_value_type(config_value)
+            else:
+                # 嵌套配置
+                # 确保父级字典存在
+                parent = current_config
+                for key in keys[:-1]:
+                    if key not in parent:
+                        parent[key] = {}
+                    elif not isinstance(parent[key], dict):
+                        # 如果父级不是字典，创建一个新字典
+                        parent[key] = {}
+                    parent = parent[key]
+                
+                # 设置最终值
+                parent[keys[-1]] = self._convert_value_type(config_value)
+            
+            # 保存到文件
+            with open(cfg.config_path, 'w', encoding='utf-8') as f:
+                yaml.safe_dump(current_config, f, allow_unicode=True, sort_keys=False, default_flow_style=False)
+            
+            self.logger.info(f"成功更新配置项: {config_key}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"更新配置项 {config_key} 失败: {str(e)}")
+            return False
+
 if __name__ == '__main__':
     manager = ConfigManager()
     # 示例用法

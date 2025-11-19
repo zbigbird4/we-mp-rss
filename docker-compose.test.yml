@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  werss:
+    image: ghcr.io/${GITHUB_REPOSITORY:-rachelos/we-mp-rss}:test-latest
+    container_name: werss-test
+    ports:
+      - "8001:8001"
+    environment:
+      # 应用配置
+      - APP_NAME=we-mp-rss
+      - SERVER_NAME=we-mp-rss
+      - WEB_NAME=WeRSS微信公众号订阅助手
+      
+      # Web授权配置
+      - WERSS_AUTH_WEB=False
+      
+      # 浏览器配置 (新增)
+      - BROWSER_TYPE=firefox
+      
+      # 通知配置
+      - SEND_CODE=True
+      - CODE_TITLE=WeRSS授权二维码
+      
+      # 任务配置
+      - ENABLE_JOB=True
+      - AUTO_RELOAD=False
+      - THREADS=2
+      
+      # 数据库配置 (SQLite - 容器内路径)
+      - DB=sqlite:///data/db.db
+      
+      # Webhook通知 (可选)
+      - DINGDING_WEBHOOK=
+      - WECHAT_WEBHOOK=
+      - FEISHU_WEBHOOK=
+      - CUSTOM_WEBHOOK=
+      
+      # 安全配置
+      - SECRET_KEY=we-mp-rss-test
+      - USER_AGENT=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36/WeRss
+      
+      # 任务间隔
+      - SPAN_INTERVAL=10
+      
+      # Webhook格式
+      - WEBHOOK.CONTENT_FORMAT=html
+      
+      # 服务配置
+      - PORT=8001
+      - DEBUG=False
+      
+      # 采集配置
+      - MAX_PAGE=5
+      
+      # RSS配置
+      - RSS_BASE_URL=
+      - RSS_LOCAL=False
+      - RSS_TITLE=
+      - RSS_DESCRIPTION=
+      - RSS_COVER=
+      - RSS_FULL_CONTEXT=True
+      - RSS_ADD_COVER=True
+      - RSS_CDATA=False
+      - RSS_PAGE_SIZE=30
+      
+      # 认证配置
+      - TOKEN_EXPIRE_MINUTES=4320
+      
+      # 缓存配置
+      - CACHE.DIR=./data/cache
+      
+      # 文章配置
+      - ARTICLE.TRUE_DELETE=False
+      
+      # 采集详细配置
+      - GATHER.CONTENT=True
+      - GATHER.MODEL=app
+      - GATHER.CONTENT_AUTO_CHECK=False
+      - GATHER.CONTENT_AUTO_INTERVAL=59
+      - GATHER.CONTENT_MODE=web
+      
+      # 安全配置
+      - SAFE_HIDE_CONFIG=db,secret,token,notice.wechat,notice.feishu,notice.dingding
+      - SAFE_LIC_KEY=RACHELOS
+      
+      # 日志配置
+      - LOG_FILE=
+      - LOG_LEVEL=INFO
+      
+      # 导出配置
+      - EXPORT_PDF=False
+      - EXPORT_PDF_DIR=./data/pdf
+      - EXPORT_MARKDOWN=False
+      - EXPORT_MARKDOWN_DIR=./data/markdown
+      
+    volumes:
+      # 持久化数据
+      - ./data:/app/data
+    restart: unless-stopped
+    networks:
+      - werss-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  werss-network:
+    driver: bridge
+
+volumes:
+  werss-data:
+    driver: local

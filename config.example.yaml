@@ -7,7 +7,7 @@ server:
    #过期是否发送授权二维通知 默认True
    send_code: ${SEND_CODE:-True}
    #二维通知标题
-   code_title: ${CODE_TITLE:-WeRSS}
+   code_title: ${CODE_TITLE:-WeRSS授权二维码}
    #启动JOB定时任务，默认为True
    enable_job: ${ENABLE_JOB:-True}
    #代码修改自动重启服务，默认为False
@@ -16,6 +16,12 @@ server:
    threads: ${THREADS:-2}
    #通过web方式授权二维码 默认False 
    auth_web: ${WERSS_AUTH_WEB:-False}
+
+
+#浏览器配置
+browser:
+   #浏览器类型，可选firefox、chromium、webkit，默认firefox
+   type: ${BROWSER_TYPE:-firefox}
 
 
 #数据库连接 例如db:  mysql+pymysql://<username>:<password>@<host>/we-rss?charset=utf8mb4

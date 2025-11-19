@@ -7,14 +7,13 @@ import {
   deleteConfig 
 } from '@/api/configManagement'
 import type { ConfigManagement } from '@/types/configManagement'
-import { Modal } from '@arco-design/web-vue'
+import { Modal, Message } from '@arco-design/web-vue'
 
 const columns = [
-  { title: '配置键', dataIndex: 'config_key' },
-  { title: '配置值', dataIndex: 'config_value', width: '30%', ellipsis: true },
-  { title: '描述', dataIndex: 'description' },
-  // { title: '状态', slotName: 'status' },
-  // { title: '操作', slotName: 'action' }
+  { title: '配置键', dataIndex: 'config_key', width: '25%' },
+  { title: '配置值', dataIndex: 'config_value', width: '30%', ellipsis: true, tooltip: true },
+  { title: '描述', dataIndex: 'description', width: '25%' },
+  { title: '操作', slotName: 'action', width: '20%' }
 ]
 
 const configList = ref<any>([])
@@ -68,13 +67,16 @@ const handleSubmit = async () => {
   try {
     if (modalTitle.value === '添加配置') {
       await createConfig(form)
+      Message.success('配置添加成功')
     } else {
       await updateConfig(form.config_key, form)
+      Message.success('配置更新成功，部分配置可能需要重启服务后生效')
     }
     visible.value = false
     fetchConfigs()
   } catch (err) {
     error.value = err instanceof Error ? err.message : '保存配置失败'
+    Message.error(error.value)
   }
 }
 
@@ -100,6 +102,12 @@ const handlePageChange = (page: number) => {
   fetchConfigs()
 }
 
+// 判断配置项是否受保护（不可编辑）
+const hiddenConfigKeys = ['db', 'secret', 'token', 'notice.wechat', 'notice.feishu', 'notice.dingding', 'safe.lic_key']
+const isHiddenConfig = (key: string) => {
+  return hiddenConfigKeys.some(hiddenKey => key.includes(hiddenKey))
+}
+
 onMounted(() => {
   fetchConfigs()
 })
@@ -107,8 +115,15 @@ onMounted(() => {
 
 <template>
   <div class="config-management">
-    <a-card title="配置" :bordered="false">
+    <a-card title="配置管理" :bordered="false">
       <a-space direction="vertical" fill>
+        <a-alert type="info" show-icon closable>
+          <template #icon>
+            <icon-info-circle />
+          </template>
+          您可以在此页面查看和编辑系统配置。受保护的配置项（如数据库连接、密钥等）无法在此编辑。部分配置修改后需要重启服务才能生效。
+        </a-alert>
+        
         <a-alert v-if="error" type="error" show-icon>{{ error }}</a-alert>
         
         <a-table
@@ -119,13 +134,17 @@ onMounted(() => {
           @page-change="handlePageChange"
           row-key="config_key"
         >
-          <template #status="{ record }">
-            <a-tag color="green">已启用</a-tag>
-          </template>
-          
           <template #action="{ record }">
             <a-space>
-              <!-- 操作按钮已隐藏 -->
+              <a-button 
+                type="text" 
+                size="small" 
+                @click="editConfig(record)"
+                v-if="!isHiddenConfig(record.config_key)"
+              >
+                编辑
+              </a-button>
+              <a-tag v-else color="gray">受保护</a-tag>
             </a-space>
           </template>
         </a-table>
@@ -137,16 +156,21 @@ onMounted(() => {
       :title="modalTitle"
       @ok="handleSubmit"
       @cancel="visible = false"
+      width="600px"
     >
       <a-form :model="form" layout="vertical">
-        <a-form-item label="配置键" field="config_key" required>
-          <a-input v-model="form.config_key" :disabled="modalTitle === '编辑配置'" />
+        <a-form-item label="配置键" field="config_key">
+          <a-input v-model="form.config_key" disabled />
         </a-form-item>
         <a-form-item label="配置值" field="config_value" required>
-          <a-input v-model="form.config_value" />
+          <a-textarea 
+            v-model="form.config_value" 
+            :auto-size="{ minRows: 2, maxRows: 6 }"
+            placeholder="请输入配置值"
+          />
         </a-form-item>
         <a-form-item label="描述" field="description">
-          <a-textarea v-model="form.description" />
+          <a-input v-model="form.description" disabled />
         </a-form-item>
       </a-form>
     </a-modal>

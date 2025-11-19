@@ -87,24 +87,31 @@ def update_config(
     config_data: ConfigManagementCreate = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
-    db=DB.get_session()
-    """更新配置项"""
+    """更新配置项到YAML文件"""
     try:
-        db_config = db.query(ConfigManagement).filter(ConfigManagement.config_key == config_key).first()
-        if not db_config:
-            raise HTTPException(status_code=404, detail="Config not found")
+        from core.yaml_db import YamlDB
         
-        if config_data.config_value is not None:
-            db_config.config_value = config_data.config_value
-        if config_data.description is not None:
-            db_config.description = config_data.description
+        # 更新YAML配置文件
+        success = YamlDB.update_config_in_yaml(config_key, config_data.config_value)
         
-        db.commit()
-        db.refresh(db_config)
-        return success_response(data=db_config)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update config in YAML file")
+        
+        # 重新加载配置
+        cfg.reload()
+        
+        return success_response(
+            message="配置更新成功",
+            data={
+                "config_key": config_key,
+                "config_value": config_data.config_value,
+                "description": config_data.description or "系统配置项"
+            }
+        )
+    except HTTPException:
+        raise
     except Exception as e:
-        db.rollback()
-        return error_response(code=500, message=str(e))
+        return error_response(code=500, message=f"更新配置失败: {str(e)}")
 
 @router.delete("/{config_key}",summary="删除配置项")
 def delete_config(

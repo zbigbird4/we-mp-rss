@@ -10,7 +10,15 @@ import asyncio
 from socket import timeout
 
 # 设置环境变量
-browsers_name = os.getenv("BROWSER_TYPE", "firefox")
+def get_browser_type():
+    """从配置文件或环境变量获取浏览器类型"""
+    try:
+        from core.config import cfg
+        return cfg.get("browser.type", os.getenv("BROWSER_TYPE", "firefox"))
+    except:
+        return os.getenv("BROWSER_TYPE", "firefox")
+
+browsers_name = get_browser_type()
 browsers_path = os.getenv("PLAYWRIGHT_BROWSERS_PATH", "")
 os.environ['PLAYWRIGHT_BROWSERS_PATH'] = browsers_path
 
