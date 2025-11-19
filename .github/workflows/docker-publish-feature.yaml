@@ -1,0 +1,70 @@
+name: Docker Image Publish (Feature Branch)
+
+permissions:
+  contents: read
+  packages: write
+
+on:
+  push:
+    branches:
+      - feat/webui-configurable-docker-envs
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract branch name
+        shell: bash
+        run: echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+      
+      - name: Sanitize branch name for Docker tag
+        shell: bash
+        run: |
+          SAFE_BRANCH=$(echo "${{ env.BRANCH_NAME }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
+          echo "DOCKER_TAG=${SAFE_BRANCH}" >> $GITHUB_ENV
+      
+      - name: Build and Push Multi-platform Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ env.DOCKER_TAG }}
+            ghcr.io/${{ github.repository }}:test-latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=WeRss 微信公众号RSS订阅服务 (Feature: WebUI可配置Docker环境变量)
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.version=${{ env.DOCKER_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Image Summary
+        run: |
+          echo "✅ Docker 镜像构建并推送成功！"
+          echo ""
+          echo "📦 镜像标签:"
+          echo "  - ghcr.io/${{ github.repository }}:${{ env.DOCKER_TAG }}"
+          echo "  - ghcr.io/${{ github.repository }}:test-latest"
+          echo ""
+          echo "🚀 部署测试命令:"
+          echo "  docker pull ghcr.io/${{ github.repository }}:test-latest"
+          echo "  docker run -d -p 8001:8001 ghcr.io/${{ github.repository }}:test-latest"
+          echo ""
+          echo "🔧 使用 docker-compose 测试:"
+          echo "  在 docker-compose.yml 中使用: image: ghcr.io/${{ github.repository }}:test-latest"
